@@ -8,6 +8,7 @@ export interface CSpellPluginSettings {
 	showSuggestionsLimit: number;
 	cspellConfigPath: string;
 	useWordsFromConfig: boolean;
+	liveHighlighting: boolean;
 }
 
 export const DEFAULT_SETTINGS: CSpellPluginSettings = {
@@ -17,6 +18,7 @@ export const DEFAULT_SETTINGS: CSpellPluginSettings = {
 	showSuggestionsLimit: 20,
 	cspellConfigPath: 'cspell.json',
 	useWordsFromConfig: true,
+	liveHighlighting: true,
 };
 
 export class CSpellSettingTab extends PluginSettingTab {
@@ -54,6 +56,17 @@ export class CSpellSettingTab extends PluginSettingTab {
 			.addTextArea((textArea) =>
 				textArea.setPlaceholder('Obsidian codex').setValue(this.plugin.settings.customWords).onChange(async (value) => {
 					this.plugin.settings.customWords = value;
+					await this.plugin.saveSettings();
+				}),
+			);
+
+
+		new Setting(containerEl)
+			.setName('Live highlighting')
+			.setDesc('Underline misspelled words directly in the editor.')
+			.addToggle((toggle) =>
+				toggle.setValue(this.plugin.settings.liveHighlighting).onChange(async (value) => {
+					this.plugin.settings.liveHighlighting = value;
 					await this.plugin.saveSettings();
 				}),
 			);

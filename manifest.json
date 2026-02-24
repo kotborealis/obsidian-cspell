@@ -1,9 +1,9 @@
 {
 	"id": "obsidian-cspell",
 	"name": "Obsidian CSpell",
-	"version": "1.1.1",
+	"version": "1.2.0",
 	"minAppVersion": "0.15.0",
-	"description": "Spell-check notes and selections using cspell library and cspell.json words.",
+	"description": "Spell-check notes with cspell commands and live highlighted misspellings.",
 	"author": "Obsidian CSpell Contributors",
 	"authorUrl": "https://github.com/streetsidesoftware/cspell",
 	"isDesktopOnly": false

@@ -1,8 +1,6 @@
-/*
-
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
-
-If your plugin does not need CSS, delete this file.
-
-*/
+.cspell-misspelled-word {
+	text-decoration-line: underline;
+	text-decoration-style: wavy;
+	text-decoration-color: var(--text-error);
+	text-decoration-thickness: 1.5px;
+}

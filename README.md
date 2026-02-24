@@ -1,9 +1,10 @@
 # Obsidian CSpell plugin
 
-Obsidian community plugin that runs spell-check with the cspell library from the cspell ecosystem.
+Obsidian community plugin that uses cspell for note spell-checking and live misspelling highlights in the editor.
 
 ## Features
 
+- Live highlighting with wavy underlines for misspelled words
 - Command: **Check spelling in current note**
 - Command: **Check spelling in selection**
 - Loads `words` and `ignoreWords` from `cspell.json` in your vault
@@ -13,7 +14,7 @@ Obsidian community plugin that runs spell-check with the cspell library from the
 ## Requirements
 
 - Obsidian Community Plugins enabled
-- `@cspell/cspell-lib` available to the plugin runtime
+- `@cspell/cspell-lib` bundled with the plugin
 - Optional `cspell.json` file in your vault root (or custom path)
 
 ## cspell.json support
