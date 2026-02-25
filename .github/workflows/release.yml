@@ -1,0 +1,59 @@
+name: Release plugin artifacts
+
+on:
+  push:
+    tags:
+      - '*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build plugin
+        run: npm run build
+
+      - name: Validate release tag and versions
+        run: |
+          set -euo pipefail
+
+          TAG="${GITHUB_REF_NAME}"
+          if [[ "$TAG" == v* ]]; then
+            echo "Tag must match manifest version exactly and must not start with 'v'."
+            exit 1
+          fi
+
+          MANIFEST_VERSION="$(node -p "require('./manifest.json').version")"
+          if [[ "$TAG" != "$MANIFEST_VERSION" ]]; then
+            echo "Tag ($TAG) does not match manifest.json version ($MANIFEST_VERSION)."
+            exit 1
+          fi
+
+          node -e "const fs=require('fs');const tag=process.env.GITHUB_REF_NAME;const versions=JSON.parse(fs.readFileSync('versions.json','utf8'));if(!versions[tag]){console.error('versions.json is missing mapping for '+tag);process.exit(1);}"
+
+      - name: Create GitHub release and upload artifacts
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            main.js
+            manifest.json
+            styles.css
+          fail_on_unmatched_files: false

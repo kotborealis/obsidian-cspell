@@ -1,11 +1,10 @@
 {
-	"id": "sample-plugin",
-	"name": "Sample Plugin",
-	"version": "1.0.0",
+	"id": "obsidian-cspell",
+	"name": "Obsidian CSpell",
+	"version": "1.2.0",
 	"minAppVersion": "0.15.0",
-	"description": "Demonstrates some of the capabilities of the Obsidian API.",
-	"author": "Obsidian",
-	"authorUrl": "https://obsidian.md",
-	"fundingUrl": "https://obsidian.md/pricing",
+	"description": "Spell-check notes with cspell commands and live highlighted misspellings.",
+	"author": "Obsidian CSpell Contributors",
+	"authorUrl": "https://github.com/streetsidesoftware/cspell",
 	"isDesktopOnly": false
 }
