@@ -26,6 +26,28 @@ By default, plugin reads `cspell.json` and imports:
 
 You can disable this behavior in plugin settings or set a custom config path.
 
+## How to use in Obsidian
+
+1. Open **Settings → Community plugins** and enable **Obsidian CSpell**.
+2. Open a note and run **Check spelling in current note** from the command palette.
+3. Select text and run **Check spelling in selection** to check only the selection.
+4. Open plugin settings to configure:
+   - **Languages** (for example `en,ru`)
+   - **Custom words**
+   - **Live highlighting**
+   - **Load words from config file** and **Config file path**
+
+### Optional `cspell.json`
+
+Create `cspell.json` in your vault root (or set a custom path in settings) and add words:
+
+```json
+{
+  "words": ["Obsidian", "Codex"],
+  "ignoreWords": ["teh"]
+}
+```
+
 ## Development
 
 ```bash
