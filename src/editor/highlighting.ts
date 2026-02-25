@@ -5,7 +5,6 @@ import type ObsidianCSpellPlugin from '../main';
 import { loadWordsFromCSpellConfig } from '../spellcheck/cspell-config';
 import { runCSpell, type SpellcheckIssue } from '../spellcheck/cspell-lib';
 import { clearUnderlines, setUnderlines, underlineDecoration } from './underlines';
-import { createSpellcheckTooltip } from './tooltip';
 
 class CSpellHighlightPlugin {
 	private timer: number | null = null;
@@ -104,7 +103,6 @@ class CSpellHighlightPlugin {
 export function createSpellcheckHighlightExtension(plugin: ObsidianCSpellPlugin): Extension {
 	return [
 		underlineDecoration,
-		createSpellcheckTooltip(plugin),
 		ViewPlugin.fromClass(class extends CSpellHighlightPlugin {
 			constructor(view: EditorView) {
 				super(view, plugin);
