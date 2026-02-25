@@ -39,6 +39,10 @@
 		"wdio-obsidian-service": "^2.3.2"
 	},
 	"dependencies": {
+		"@codemirror/language": "^6.10.0",
+		"@codemirror/state": "^6.4.1",
+		"@codemirror/view": "^6.28.2",
+		"@lezer/common": "^1.2.0",
 		"cspell-lib": "^8.0.0",
 		"obsidian": "latest"
 	}

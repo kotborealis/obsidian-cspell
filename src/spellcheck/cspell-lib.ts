@@ -14,17 +14,6 @@ export interface SpellcheckResult {
 	rawOutput: string;
 }
 
-interface CSpellIssue {
-	text?: string;
-	word?: string;
-	offset?: number;
-	length?: number;
-}
-
-interface CSpellCheckResult {
-	issues?: CSpellIssue[];
-}
-
 export interface CSpellRunInput {
 	filename: string;
 	settings: CSpellPluginSettings;
@@ -85,7 +74,8 @@ export async function runCSpell(content: string, input: CSpellRunInput): Promise
 
 	const result = await spellCheckDocument(document, { generateSuggestions: false }, settings);
 	if (result.errors?.length) {
-		throw result.errors[0];
+		const error = result.errors[0];
+		throw error instanceof Error ? error : new Error(String(error));
 	}
 
 	const issues = normalizeIssues(result.issues);

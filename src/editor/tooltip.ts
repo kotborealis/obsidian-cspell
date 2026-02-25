@@ -96,9 +96,10 @@ function buildTooltip(plugin: ObsidianCSpellPlugin, state: EditorView['state'], 
 			const ignoreButton = document.createElement('button');
 			ignoreButton.type = 'button';
 			ignoreButton.textContent = 'Add to custom words';
-			ignoreButton.addEventListener('click', async () => {
-				await addCustomWord(plugin, issueWord);
-				view.dispatch({ effects: [clearUnderlines.of(null)] });
+			ignoreButton.addEventListener('click', () => {
+				void addCustomWord(plugin, issueWord).then(() => {
+					view.dispatch({ effects: [clearUnderlines.of(null)] });
+				});
 			});
 
 			actions.appendChild(ignoreButton);

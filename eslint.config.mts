@@ -22,6 +22,24 @@ export default tseslint.config(
 		},
 	},
 	...obsidianmd.configs.recommended,
+	{
+		files: ["test/**/*.ts", "tests/**/*.ts"],
+		languageOptions: {
+			globals: {
+				...globals.browser,
+				...globals.node,
+				...globals.mocha,
+				browser: "readonly",
+			},
+		},
+		rules: {
+			"@typescript-eslint/no-unsafe-assignment": "off",
+			"@typescript-eslint/no-unsafe-call": "off",
+			"@typescript-eslint/no-unsafe-member-access": "off",
+			"@typescript-eslint/no-unsafe-return": "off",
+			"@typescript-eslint/no-unsafe-argument": "off",
+		},
+	},
 	globalIgnores([
 		"node_modules",
 		"dist",

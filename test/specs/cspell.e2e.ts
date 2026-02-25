@@ -17,21 +17,6 @@ async function waitForNoticeText(expectedText: string): Promise<void> {
 	}, { timeout: 15000, timeoutMsg: `Expected notice containing "${expectedText}"` });
 }
 
-async function waitForAnyNotice(): Promise<string> {
-	let lastText = '';
-	await browser.waitUntil(async () => {
-		const notices = await browser.$$('.notice');
-		if (!notices.length) {
-			return false;
-		}
-		const texts = await Promise.all(notices.map((notice) => notice.getText()));
-		lastText = texts.join(' | ');
-		return texts.some(Boolean);
-	}, { timeout: 20000, timeoutMsg: 'Expected a notice to appear' });
-
-	return lastText;
-}
-
 async function setActiveNoteContent(noteContent: string): Promise<void> {
 	await browser.executeObsidian(async ({ app, obsidian }, content) => {
 		const file = app.vault.getAbstractFileByPath('Welcome.md');
