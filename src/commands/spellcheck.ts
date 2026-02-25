@@ -47,6 +47,9 @@ async function checkText(plugin: ObsidianCSpellPlugin, onlySelection: boolean): 
 			settings: plugin.settings,
 			configWords,
 			configIgnoreWords,
+			adapter: plugin.app.vault.adapter,
+			configDir: plugin.app.vault.configDir,
+			pluginId: plugin.manifest.id,
 		});
 	} catch (error) {
 		new Notice(error instanceof Error ? `Spell-check failed: ${error.message}` : 'Spell-check failed.');

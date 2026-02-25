@@ -40,6 +40,9 @@ const context = await esbuild.context({
 	format: "cjs",
 	platform: "node",
 	target: "es2018",
+	loader: {
+		".gz": "binary",
+	},
 	logLevel: "info",
 	sourcemap: prod ? false : "inline",
 	treeShaking: true,

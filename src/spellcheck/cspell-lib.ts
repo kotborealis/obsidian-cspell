@@ -1,8 +1,7 @@
 import type { CSpellUserSettings, Document, ValidationIssue } from 'cspell-lib';
-import { getDefaultBundledSettingsAsync, getDefaultConfigLoader, mergeSettings, spellCheckDocument } from 'cspell-lib';
-import { existsSync } from 'node:fs';
-import path from 'node:path';
+import { getDefaultBundledSettingsAsync, mergeSettings, spellCheckDocument } from 'cspell-lib';
 import type { CSpellPluginSettings } from '../settings';
+import { DEFAULT_DICTIONARY_TRIES, getDefaultDictionarySettings, toArrayBuffer } from './embedded-dicts-data';
 
 export interface SpellcheckIssue {
 	word: string;
@@ -21,6 +20,9 @@ export interface CSpellRunInput {
 	settings: CSpellPluginSettings;
 	configWords?: string[];
 	configIgnoreWords?: string[];
+	adapter?: DictionaryAdapter;
+	configDir?: string;
+	pluginId?: string;
 }
 
 function parseCustomWords(customWords: string): string[] {
@@ -48,11 +50,16 @@ function normalizeIssues(issues: ValidationIssue[]): SpellcheckIssue[] {
 	return normalized;
 }
 
-function createSettings(input: CSpellRunInput): CSpellUserSettings {
-	const defaultImports = getDefaultDictionaryImports();
+function createSettings(
+	input: CSpellRunInput,
+	dictionarySettings: Pick<CSpellUserSettings, 'dictionaryDefinitions' | 'languageSettings'> = {
+		dictionaryDefinitions: [],
+		languageSettings: [],
+	},
+): CSpellUserSettings {
 	return {
 		language: input.settings.language,
-		import: defaultImports,
+		...dictionarySettings,
 		words: input.configWords ?? [],
 		ignoreWords: [...parseCustomWords(input.settings.customWords), ...(input.configIgnoreWords ?? [])],
 	};
@@ -67,39 +74,85 @@ async function getDefaultSettings(): Promise<CSpellUserSettings> {
 	return defaultSettingsPromise;
 }
 
-function resolveDictPath(...parts: string[]): string | null {
-	const cwdCandidate = path.join(process.cwd(), 'dicts', ...parts);
-	if (existsSync(cwdCandidate)) {
-		return cwdCandidate;
+type DictionaryAdapter = {
+	exists(path: string): Promise<boolean>;
+	mkdir(path: string): Promise<void>;
+	writeBinary(path: string, data: ArrayBuffer): Promise<void>;
+	getBasePath?: () => string;
+};
+
+const DEFAULT_DICT_DIR = 'dicts/embedded';
+
+async function ensureEmbeddedDictionaries(input: CSpellRunInput): Promise<{
+	enUs: string;
+	ruRu: string;
+} | null> {
+	if (!input.adapter || !input.configDir || !input.pluginId) {
+		return null;
 	}
 
-	const moduleDir = typeof __dirname === 'string' ? __dirname : process.cwd();
-	const moduleCandidate = path.join(moduleDir, 'dicts', ...parts);
-	if (existsSync(moduleCandidate)) {
-		return moduleCandidate;
-	}
+	const adapter = input.adapter;
+	const relativeBaseDir = normalizePath(`${input.configDir}/plugins/${input.pluginId}/${DEFAULT_DICT_DIR}`);
+	const writeEnUsPath = normalizePath(`${relativeBaseDir}/en_US.trie.gz`);
+	const writeRuRuPath = normalizePath(`${relativeBaseDir}/ru_ru.trie.gz`);
 
-	return null;
+	await ensureDirectory(adapter, relativeBaseDir);
+	await ensureBinaryFile(adapter, writeEnUsPath, DEFAULT_DICTIONARY_TRIES.enUs);
+	await ensureBinaryFile(adapter, writeRuRuPath, DEFAULT_DICTIONARY_TRIES.ruRu);
+
+	const absoluteBaseDir = resolveAbsolutePath(adapter, relativeBaseDir);
+	return {
+		enUs: normalizePath(`${absoluteBaseDir}/en_US.trie.gz`),
+		ruRu: normalizePath(`${absoluteBaseDir}/ru_ru.trie.gz`),
+	};
 }
 
-function getDefaultDictionaryImports(): string[] {
-	const imports: string[] = [];
-	const enUs = resolveDictPath('en_us', 'cspell-ext.json');
-	if (enUs) {
-		imports.push(enUs);
+async function ensureDirectory(adapter: DictionaryAdapter, dir: string): Promise<void> {
+	const parts = normalizePath(dir).split('/').filter(Boolean);
+	let current = '';
+	for (const part of parts) {
+		current = current ? `${current}/${part}` : part;
+		if (!(await adapter.exists(current))) {
+			await adapter.mkdir(current);
+		}
 	}
-	const ruRu = resolveDictPath('ru_ru', 'cspell-ext.json');
-	if (ruRu) {
-		imports.push(ruRu);
+}
+
+async function ensureBinaryFile(adapter: DictionaryAdapter, path: string, data: Uint8Array): Promise<void> {
+	if (await adapter.exists(path)) {
+		return;
 	}
-	return imports;
+	await adapter.writeBinary(path, toArrayBuffer(data));
+}
+
+function normalizePath(value: string): string {
+	return value.replace(/\\/g, '/').replace(/\/+/g, '/').replace(/\/$/, '');
+}
+
+function resolveAbsolutePath(adapter: DictionaryAdapter, relativePath: string): string {
+	const normalized = normalizePath(relativePath);
+	if (isAbsolutePath(normalized)) {
+		return normalized;
+	}
+	const basePath = typeof adapter.getBasePath === 'function' ? normalizePath(adapter.getBasePath()) : '';
+	if (!basePath) {
+		return normalized;
+	}
+	return normalizePath(`${basePath}/${normalized}`);
+}
+
+function isAbsolutePath(value: string): boolean {
+	return value.startsWith('/') || /^[A-Za-z]:\//.test(value) || value.startsWith('\\\\');
 }
 
 export async function runCSpell(content: string, input: CSpellRunInput): Promise<SpellcheckResult> {
 	const baseSettings = await getDefaultSettings();
-	const rawSettings = createSettings(input);
-	const resolvedImports = await getDefaultConfigLoader().resolveSettingsImports(rawSettings, process.cwd());
-	const settings = mergeSettings(baseSettings, resolvedImports);
+	const dictionaryPaths = await ensureEmbeddedDictionaries(input);
+	const dictionarySettings = dictionaryPaths
+		? getDefaultDictionarySettings(dictionaryPaths)
+		: { dictionaryDefinitions: [], languageSettings: [] };
+	const rawSettings = createSettings(input, dictionarySettings);
+	const settings = mergeSettings(baseSettings, rawSettings);
 	const document: Document = {
 		uri: input.filename,
 		text: content,

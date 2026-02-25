@@ -35,6 +35,7 @@ export default tseslint.config(
 			"@typescript-eslint/no-unsafe-argument": "off",
 			"@typescript-eslint/await-thenable": "off",
 			"@typescript-eslint/no-deprecated": "off",
+			"import/no-nodejs-modules": "off",
 		},
 	},
 	{

@@ -73,6 +73,9 @@ class CSpellHighlightPlugin {
 				settings: this.plugin.settings,
 				configWords,
 				configIgnoreWords,
+				adapter: this.plugin.app.vault.adapter,
+				configDir: this.plugin.app.vault.configDir,
+				pluginId: this.plugin.manifest.id,
 			});
 
 			if (requestId !== this.requestId) {
