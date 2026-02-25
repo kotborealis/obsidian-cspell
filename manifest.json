@@ -1,7 +1,7 @@
 {
 	"id": "obsidian-cspell",
 	"name": "Obsidian CSpell",
-	"version": "1.3.1",
+	"version": "1.3.2",
 	"minAppVersion": "0.15.0",
 	"description": "Spell-check notes with cspell commands and live highlighted misspellings.",
 	"author": "Obsidian CSpell Contributors",

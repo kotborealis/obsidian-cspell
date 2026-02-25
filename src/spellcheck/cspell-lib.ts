@@ -42,7 +42,7 @@ async function loadCSpellLib(): Promise<CSpellLibLike> {
 		return cachedLib;
 	}
 
-	const moduleName = ['@cspell', 'cspell-lib'].join('/');
+	const moduleName = 'cspell-lib';
 	const imported = (await import(moduleName)) as CSpellLibLike;
 	cachedLib = imported;
 	return imported;
