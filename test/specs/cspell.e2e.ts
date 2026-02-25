@@ -1,0 +1,176 @@
+import { expect } from '@wdio/globals';
+import { describe, it, before, beforeEach } from 'mocha';
+import { obsidianPage } from 'wdio-obsidian-service';
+
+const COMMAND_ID = 'obsidian-cspell:cspell-check-current-note';
+
+async function waitForNoticeText(expectedText: string): Promise<void> {
+	await browser.waitUntil(async () => {
+		const notices = await browser.$$('.notice');
+		for (const notice of notices) {
+			const text = await notice.getText();
+			if (text.includes(expectedText)) {
+				return true;
+			}
+		}
+		return false;
+	}, { timeout: 15000, timeoutMsg: `Expected notice containing "${expectedText}"` });
+}
+
+async function waitForAnyNotice(): Promise<string> {
+	let lastText = '';
+	await browser.waitUntil(async () => {
+		const notices = await browser.$$('.notice');
+		if (!notices.length) {
+			return false;
+		}
+		const texts = await Promise.all(notices.map((notice) => notice.getText()));
+		lastText = texts.join(' | ');
+		return texts.some(Boolean);
+	}, { timeout: 20000, timeoutMsg: 'Expected a notice to appear' });
+
+	return lastText;
+}
+
+async function setActiveNoteContent(noteContent: string): Promise<void> {
+	await browser.executeObsidian(async ({ app, obsidian }, content) => {
+		const file = app.vault.getAbstractFileByPath('Welcome.md');
+		if (file instanceof obsidian.TFile) {
+			await app.vault.modify(file, content);
+			await app.workspace.getLeaf(false).openFile(file);
+		}
+	}, noteContent);
+
+	await browser.waitUntil(async () => {
+		return browser.executeObsidian(({ app }) => {
+			const active = app.workspace.getActiveFile();
+			return active?.path === 'Welcome.md';
+		});
+	}, { timeout: 10000, timeoutMsg: 'Expected Welcome.md to be active' });
+}
+
+async function runSpellcheckCommand(): Promise<void> {
+	const ran = await browser.executeObsidian(({ app }, commandId) => {
+		return app.commands.executeCommandById(commandId);
+	}, COMMAND_ID);
+	if (!ran) {
+		throw new Error(`Failed to run command: ${COMMAND_ID}`);
+	}
+}
+
+async function runSpellcheckAndGetNoticeText(): Promise<string> {
+	const text = await browser.executeObsidian(async ({ app }, commandId) => {
+		document.querySelectorAll('.notice').forEach((notice) => notice.remove());
+		const ran = app.commands.executeCommandById(commandId);
+		if (!ran) {
+			return '';
+		}
+		const timeoutMs = 20000;
+		const start = Date.now();
+		while (Date.now() - start < timeoutMs) {
+			const notices = Array.from(document.querySelectorAll('.notice'));
+			const text = notices.map((notice) => notice.textContent ?? '').join(' | ').trim();
+			if (text) {
+				return text;
+			}
+			await new Promise((resolve) => setTimeout(resolve, 200));
+		}
+		return '';
+	}, COMMAND_ID);
+
+	return text;
+}
+
+async function setCursorOnWord(word: string): Promise<void> {
+	await browser.executeObsidian(async ({ app }, targetWord) => {
+		const view = app.workspace.getActiveViewOfType(app.workspace.activeLeaf?.view?.constructor);
+		if (!view || !('editor' in view)) {
+			throw new Error('No active editor view');
+		}
+		const editor = (view as { editor: { getValue: () => string; offsetToPos: (offset: number) => { line: number; ch: number }; setCursor: (pos: { line: number; ch: number }) => void } }).editor;
+		const content = editor.getValue();
+		const offset = content.indexOf(targetWord);
+		if (offset === -1) {
+			throw new Error(`Word not found: ${targetWord}`);
+		}
+		editor.setCursor(editor.offsetToPos(offset + 1));
+	}, word);
+}
+
+async function waitForTooltipText(expectedText: string): Promise<void> {
+	await browser.waitUntil(async () => {
+		const tooltip = await browser.$('.cspell-tooltip');
+		if (!(await tooltip.isExisting())) {
+			return false;
+		}
+		const text = await tooltip.getText();
+		return text.includes(expectedText);
+	}, { timeout: 15000, timeoutMsg: `Expected tooltip containing "${expectedText}"` });
+}
+
+async function disableConfigLoading(): Promise<void> {
+	await browser.waitUntil(async () => {
+		return browser.executeObsidian(({ app }) => Boolean(app.plugins.getPlugin('obsidian-cspell')));
+	}, { timeout: 20000, timeoutMsg: 'obsidian-cspell plugin did not load in time' });
+
+	await browser.executeObsidian(async ({ app }) => {
+		const plugin = app.plugins.getPlugin('obsidian-cspell');
+		if (!plugin) {
+			throw new Error('obsidian-cspell plugin not loaded');
+		}
+		plugin.settings.enabled = true;
+		plugin.settings.language = 'en';
+		plugin.settings.customWords = '';
+		plugin.settings.useWordsFromConfig = false;
+		await plugin.saveSettings();
+	});
+}
+
+async function setCustomWords(words: string): Promise<void> {
+	await browser.executeObsidian(async ({ app }, value) => {
+		const plugin = app.plugins.getPlugin('obsidian-cspell');
+		if (!plugin) {
+			throw new Error('obsidian-cspell plugin not loaded');
+		}
+		plugin.settings.customWords = value;
+		await plugin.saveSettings();
+	}, words);
+}
+
+describe('Obsidian CSpell plugin', () => {
+	before(async () => {
+		await browser.reloadObsidian({ vault: 'test/vaults/simple' });
+	});
+
+	beforeEach(async () => {
+		await obsidianPage.resetVault('test/vaults/simple');
+		await disableConfigLoading();
+	});
+
+	it('reports misspellings in the current note', async () => {
+		await setActiveNoteContent('This has a misspelld word.');
+		await browser.pause(1000);
+		await runSpellcheckCommand();
+		await waitForNoticeText('Found');
+	});
+
+	it('shows tooltip for a misspelled word underline', async () => {
+		await setActiveNoteContent('This has a misspelld word.');
+		await browser.pause(1000);
+		await runSpellcheckAndGetNoticeText();
+		await setCursorOnWord('misspelld');
+		await waitForTooltipText('misspelld');
+	});
+
+	it('reports no issues for clean text', async () => {
+		const sentence = 'This sentence is spelled correctly.';
+		await setActiveNoteContent(sentence);
+		await browser.pause(1000);
+		await setCustomWords('This sentence is spelled correctly');
+		const noticeText = await runSpellcheckAndGetNoticeText();
+		if (!noticeText) {
+			throw new Error('Expected a notice to appear');
+		}
+		expect(noticeText).toContain('No spelling issues found.');
+	});
+});

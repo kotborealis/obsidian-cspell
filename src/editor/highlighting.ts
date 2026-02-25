@@ -1,18 +1,13 @@
-/* eslint-disable import/no-extraneous-dependencies */
-import { Decoration, type DecorationSet, EditorView, ViewPlugin, type ViewUpdate } from '@codemirror/view';
-import { RangeSetBuilder } from '@codemirror/state';
+import { EditorView, ViewPlugin, type ViewUpdate } from '@codemirror/view';
 import { MarkdownView } from 'obsidian';
 import type { Extension } from '@codemirror/state';
 import type ObsidianCSpellPlugin from '../main';
 import { loadWordsFromCSpellConfig } from '../spellcheck/cspell-config';
-import { runCSpell } from '../spellcheck/cspell-lib';
-
-const misspelledWordMark = Decoration.mark({
-	class: 'cspell-misspelled-word',
-});
+import { runCSpell, type SpellcheckIssue } from '../spellcheck/cspell-lib';
+import { clearUnderlines, setUnderlines, underlineDecoration } from './underlines';
+import { createSpellcheckTooltip } from './tooltip';
 
 class CSpellHighlightPlugin {
-	decorations: DecorationSet = Decoration.none;
 	private timer: number | null = null;
 	private readonly debounceMs = 350;
 	private requestId = 0;
@@ -55,7 +50,7 @@ class CSpellHighlightPlugin {
 			!markdownView ||
 			!file
 		) {
-			this.updateDecorations([]);
+			this.clearDecorations();
 			return;
 		}
 
@@ -85,45 +80,35 @@ class CSpellHighlightPlugin {
 				return;
 			}
 
-			this.updateDecorations(
-				result.issues.map((issue) => ({
-					from: issue.offset,
-					to: issue.offset + issue.length,
-				})),
-			);
+			this.setDecorations(result.issues);
 		} catch {
 			if (requestId === this.requestId) {
-				this.updateDecorations([]);
+				this.clearDecorations();
 			}
 		}
 	}
 
-	private updateDecorations(ranges: Array<{ from: number; to: number }>): void {
-		const builder = new RangeSetBuilder<Decoration>();
-		const docLength = this.view.state.doc.length;
-		for (const range of ranges) {
-			const from = Math.max(0, Math.min(docLength, range.from));
-			const to = Math.max(from, Math.min(docLength, range.to));
-			if (from === to) {
-				continue;
-			}
-			builder.add(from, to, misspelledWordMark);
-		}
+	private setDecorations(issues: SpellcheckIssue[]): void {
+		this.view.dispatch({
+			effects: [setUnderlines.of(issues)],
+		});
+	}
 
-		this.decorations = builder.finish();
-		this.view.requestMeasure();
+	private clearDecorations(): void {
+		this.view.dispatch({
+			effects: [clearUnderlines.of(null)],
+		});
 	}
 }
 
 export function createSpellcheckHighlightExtension(plugin: ObsidianCSpellPlugin): Extension {
-	return ViewPlugin.fromClass(
-		class extends CSpellHighlightPlugin {
+	return [
+		underlineDecoration,
+		createSpellcheckTooltip(plugin),
+		ViewPlugin.fromClass(class extends CSpellHighlightPlugin {
 			constructor(view: EditorView) {
 				super(view, plugin);
 			}
-		},
-		{
-			decorations: (value) => value.decorations,
-		},
-	);
+		}),
+	];
 }

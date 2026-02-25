@@ -1,5 +1,5 @@
 import type { CSpellUserSettings, Document, ValidationIssue } from 'cspell-lib';
-import { spellCheckDocument } from 'cspell-lib';
+import { getDefaultBundledSettingsAsync, mergeSettings, spellCheckDocument } from 'cspell-lib';
 import type { CSpellPluginSettings } from '../settings';
 
 export interface SpellcheckIssue {
@@ -65,8 +65,18 @@ function createSettings(input: CSpellRunInput): CSpellUserSettings {
 	};
 }
 
+let defaultSettingsPromise: Promise<CSpellUserSettings> | null = null;
+
+async function getDefaultSettings(): Promise<CSpellUserSettings> {
+	if (!defaultSettingsPromise) {
+		defaultSettingsPromise = getDefaultBundledSettingsAsync();
+	}
+	return defaultSettingsPromise;
+}
+
 export async function runCSpell(content: string, input: CSpellRunInput): Promise<SpellcheckResult> {
-	const settings = createSettings(input);
+	const baseSettings = await getDefaultSettings();
+	const settings = mergeSettings(baseSettings, createSettings(input));
 	const document: Document = {
 		uri: input.filename,
 		text: content,
