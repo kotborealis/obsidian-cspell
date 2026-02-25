@@ -1,4 +1,5 @@
 import type { CSpellPluginSettings } from '../settings';
+import * as cspellModule from 'cspell-lib';
 
 export interface SpellcheckIssue {
 	word: string;
@@ -35,17 +36,10 @@ type CSpellLibLike = {
 	checkTextAndGetSuggestions?: (text: string, options?: Record<string, unknown>) => Promise<CSpellCheckResult>;
 };
 
-let cachedLib: CSpellLibLike | null = null;
+const cspellLib: CSpellLibLike = cspellModule as CSpellLibLike;
 
-async function loadCSpellLib(): Promise<CSpellLibLike> {
-	if (cachedLib) {
-		return cachedLib;
-	}
-
-	const moduleName = 'cspell-lib';
-	const imported = (await import(moduleName)) as CSpellLibLike;
-	cachedLib = imported;
-	return imported;
+function getCheckText(lib: CSpellLibLike) {
+	return lib.checkTextAndGetSuggestions ?? lib.checkText;
 }
 
 function parseCustomWords(customWords: string): string[] {
@@ -74,7 +68,6 @@ function normalizeIssues(result: CSpellCheckResult): SpellcheckIssue[] {
 }
 
 export async function runCSpell(content: string, input: CSpellRunInput): Promise<SpellcheckResult> {
-	const cspellLib = await loadCSpellLib();
 	const options = {
 		languageId: input.settings.language,
 		ignoreWords: [...parseCustomWords(input.settings.customWords), ...(input.configIgnoreWords ?? [])],
@@ -82,7 +75,7 @@ export async function runCSpell(content: string, input: CSpellRunInput): Promise
 		fileUri: input.filename,
 	};
 
-	const checkText = cspellLib.checkTextAndGetSuggestions ?? cspellLib.checkText;
+	const checkText = getCheckText(cspellLib);
 	if (!checkText) {
 		throw new Error('Failed to load @cspell/cspell-lib API.');
 	}
