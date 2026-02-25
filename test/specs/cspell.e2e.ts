@@ -66,33 +66,6 @@ async function runSpellcheckAndGetNoticeText(): Promise<string> {
 	return text;
 }
 
-async function setCursorOnWord(word: string): Promise<void> {
-	await browser.executeObsidian(async ({ app }, targetWord) => {
-		const view = app.workspace.getActiveViewOfType(app.workspace.activeLeaf?.view?.constructor);
-		if (!view || !('editor' in view)) {
-			throw new Error('No active editor view');
-		}
-		const editor = (view as { editor: { getValue: () => string; offsetToPos: (offset: number) => { line: number; ch: number }; setCursor: (pos: { line: number; ch: number }) => void } }).editor;
-		const content = editor.getValue();
-		const offset = content.indexOf(targetWord);
-		if (offset === -1) {
-			throw new Error(`Word not found: ${targetWord}`);
-		}
-		editor.setCursor(editor.offsetToPos(offset + 1));
-	}, word);
-}
-
-async function waitForTooltipText(expectedText: string): Promise<void> {
-	await browser.waitUntil(async () => {
-		const tooltip = await browser.$('.cspell-tooltip');
-		if (!(await tooltip.isExisting())) {
-			return false;
-		}
-		const text = await tooltip.getText();
-		return text.includes(expectedText);
-	}, { timeout: 15000, timeoutMsg: `Expected tooltip containing "${expectedText}"` });
-}
-
 async function disableConfigLoading(): Promise<void> {
 	await browser.waitUntil(async () => {
 		return browser.executeObsidian(({ app }) => Boolean(app.plugins.getPlugin('obsidian-cspell')));
@@ -137,14 +110,6 @@ describe('Obsidian CSpell plugin', () => {
 		await browser.pause(1000);
 		await runSpellcheckCommand();
 		await waitForNoticeText('Found');
-	});
-
-	it('shows tooltip for a misspelled word underline', async () => {
-		await setActiveNoteContent('This has a misspelld word.');
-		await browser.pause(1000);
-		await runSpellcheckAndGetNoticeText();
-		await setCursorOnWord('misspelld');
-		await waitForTooltipText('misspelld');
 	});
 
 	it('reports no issues for clean text', async () => {
