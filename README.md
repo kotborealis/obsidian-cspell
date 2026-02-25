@@ -70,12 +70,14 @@ To publish a release with built artifacts:
 
 1. Ensure `manifest.json` and `versions.json` are updated to the new version.
 2. Push a Git tag that exactly matches `manifest.json` version (for example `1.2.0`, without `v`).
-3. GitHub Actions will run `npm ci` + `npm run build` and create a GitHub Release with:
+3. GitHub Actions will run `npm ci` + `npm run lint` + `npm run build` and create a GitHub Release with:
    - `main.js`
    - `manifest.json`
    - `styles.css` (if present)
 
 If the tag does not match `manifest.json` or the version is missing in `versions.json`, the workflow fails intentionally.
+
+You can also run the workflow manually from **Actions → Release plugin artifacts → Run workflow** to verify build/lint before tagging.
 
 ## Manual install for testing
 
