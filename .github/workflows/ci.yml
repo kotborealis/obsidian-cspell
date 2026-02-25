@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install system deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            xvfb \
+            libnss3 \
+            libatk-bridge2.0-0 \
+            libgtk-3-0 \
+            libasound2t64 \
+            libxss1 \
+            libxkbcommon0 \
+            libgbm1 \
+            libnotify4 \
+            libxtst6 \
+            libxrandr2 \
+            libxcb1 \
+            libxcomposite1 \
+            libxdamage1 \
+            libxfixes3 \
+            libxshmfence1 \
+            libappindicator3-1 \
+            libatk1.0-0 \
+            libcups2
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: E2E tests
+        run: xvfb-run -a npm run test:e2e

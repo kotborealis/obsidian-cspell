@@ -10,18 +10,33 @@ export default tseslint.config(
 				...globals.browser,
 			},
 			parserOptions: {
-				projectService: {
-					allowDefaultProject: [
-						'eslint.config.js',
-						'manifest.json'
-					]
-				},
+				project: ['./tsconfig.eslint.json'],
 				tsconfigRootDir: import.meta.dirname,
 				extraFileExtensions: ['.json']
 			},
 		},
 	},
 	...obsidianmd.configs.recommended,
+	{
+		files: ["test/**/*.ts", "tests/**/*.ts"],
+		languageOptions: {
+			globals: {
+				...globals.browser,
+				...globals.node,
+				...globals.mocha,
+				browser: "readonly",
+			},
+		},
+		rules: {
+			"@typescript-eslint/no-unsafe-assignment": "off",
+			"@typescript-eslint/no-unsafe-call": "off",
+			"@typescript-eslint/no-unsafe-member-access": "off",
+			"@typescript-eslint/no-unsafe-return": "off",
+			"@typescript-eslint/no-unsafe-argument": "off",
+			"@typescript-eslint/await-thenable": "off",
+			"@typescript-eslint/no-deprecated": "off",
+		},
+	},
 	globalIgnores([
 		"node_modules",
 		"dist",
