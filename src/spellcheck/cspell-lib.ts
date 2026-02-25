@@ -1,5 +1,8 @@
 import type { CSpellUserSettings, Document, ValidationIssue } from 'cspell-lib';
-import { getDefaultBundledSettingsAsync, mergeSettings, spellCheckDocument } from 'cspell-lib';
+import { getDefaultBundledSettingsAsync, getDefaultConfigLoader, mergeSettings, spellCheckDocument } from 'cspell-lib';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type { CSpellPluginSettings } from '../settings';
 
 export interface SpellcheckIssue {
@@ -47,8 +50,10 @@ function normalizeIssues(issues: ValidationIssue[]): SpellcheckIssue[] {
 }
 
 function createSettings(input: CSpellRunInput): CSpellUserSettings {
+	const defaultImports = getDefaultDictionaryImports();
 	return {
 		language: input.settings.language,
+		import: defaultImports,
 		words: input.configWords ?? [],
 		ignoreWords: [...parseCustomWords(input.settings.customWords), ...(input.configIgnoreWords ?? [])],
 	};
@@ -63,13 +68,44 @@ async function getDefaultSettings(): Promise<CSpellUserSettings> {
 	return defaultSettingsPromise;
 }
 
+function resolveDictPath(...parts: string[]): string | null {
+	const cwdCandidate = path.join(process.cwd(), 'dicts', ...parts);
+	if (existsSync(cwdCandidate)) {
+		return cwdCandidate;
+	}
+
+	const moduleDir = path.dirname(fileURLToPath(import.meta.url));
+	const moduleCandidate = path.join(moduleDir, 'dicts', ...parts);
+	if (existsSync(moduleCandidate)) {
+		return moduleCandidate;
+	}
+
+	return null;
+}
+
+function getDefaultDictionaryImports(): string[] {
+	const imports: string[] = [];
+	const enUs = resolveDictPath('en_us', 'cspell-ext.json');
+	if (enUs) {
+		imports.push(enUs);
+	}
+	const ruRu = resolveDictPath('ru_ru', 'cspell-ext.json');
+	if (ruRu) {
+		imports.push(ruRu);
+	}
+	return imports;
+}
+
 export async function runCSpell(content: string, input: CSpellRunInput): Promise<SpellcheckResult> {
 	const baseSettings = await getDefaultSettings();
-	const settings = mergeSettings(baseSettings, createSettings(input));
+	const rawSettings = createSettings(input);
+	const resolvedImports = await getDefaultConfigLoader().resolveSettingsImports(rawSettings, process.cwd());
+	const settings = mergeSettings(baseSettings, resolvedImports);
 	const document: Document = {
 		uri: input.filename,
 		text: content,
 		languageId: 'markdown',
+		locale: input.settings.language,
 	};
 
 	const result = await spellCheckDocument(document, { generateSuggestions: false }, settings);
