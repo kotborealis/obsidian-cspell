@@ -37,6 +37,18 @@ export default tseslint.config(
 			"@typescript-eslint/no-deprecated": "off",
 		},
 	},
+	{
+		files: ["src/spellcheck/cspell-lib.ts"],
+		languageOptions: {
+			globals: {
+				...globals.browser,
+				...globals.node,
+			},
+		},
+		rules: {
+			"import/no-nodejs-modules": "off",
+		},
+	},
 	globalIgnores([
 		"node_modules",
 		"dist",

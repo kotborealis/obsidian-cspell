@@ -2,7 +2,6 @@ import type { CSpellUserSettings, Document, ValidationIssue } from 'cspell-lib';
 import { getDefaultBundledSettingsAsync, getDefaultConfigLoader, mergeSettings, spellCheckDocument } from 'cspell-lib';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import type { CSpellPluginSettings } from '../settings';
 
 export interface SpellcheckIssue {
@@ -74,7 +73,7 @@ function resolveDictPath(...parts: string[]): string | null {
 		return cwdCandidate;
 	}
 
-	const moduleDir = path.dirname(fileURLToPath(import.meta.url));
+	const moduleDir = typeof __dirname === 'string' ? __dirname : process.cwd();
 	const moduleCandidate = path.join(moduleDir, 'dicts', ...parts);
 	if (existsSync(moduleCandidate)) {
 		return moduleCandidate;
