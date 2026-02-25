@@ -1,5 +1,6 @@
+import type { CSpellUserSettings, Document, ValidationIssue } from 'cspell-lib';
+import { spellCheckDocument } from 'cspell-lib';
 import type { CSpellPluginSettings } from '../settings';
-import * as cspellModule from 'cspell-lib';
 
 export interface SpellcheckIssue {
 	word: string;
@@ -31,17 +32,6 @@ export interface CSpellRunInput {
 	configIgnoreWords?: string[];
 }
 
-type CSpellLibLike = {
-	checkText?: (text: string, options?: Record<string, unknown>) => Promise<CSpellCheckResult>;
-	checkTextAndGetSuggestions?: (text: string, options?: Record<string, unknown>) => Promise<CSpellCheckResult>;
-};
-
-const cspellLib: CSpellLibLike = cspellModule as CSpellLibLike;
-
-function getCheckText(lib: CSpellLibLike) {
-	return lib.checkTextAndGetSuggestions ?? lib.checkText;
-}
-
 function parseCustomWords(customWords: string): string[] {
 	return customWords
 		.split(/[\s,]+/)
@@ -49,10 +39,10 @@ function parseCustomWords(customWords: string): string[] {
 		.filter(Boolean);
 }
 
-function normalizeIssues(result: CSpellCheckResult): SpellcheckIssue[] {
+function normalizeIssues(issues: ValidationIssue[]): SpellcheckIssue[] {
 	const normalized: SpellcheckIssue[] = [];
-	for (const issue of result.issues ?? []) {
-		const word = issue.text ?? issue.word;
+	for (const issue of issues) {
+		const word = issue.text;
 		if (!word || typeof issue.offset !== 'number') {
 			continue;
 		}
@@ -67,26 +57,33 @@ function normalizeIssues(result: CSpellCheckResult): SpellcheckIssue[] {
 	return normalized;
 }
 
-export async function runCSpell(content: string, input: CSpellRunInput): Promise<SpellcheckResult> {
-	const options = {
-		languageId: input.settings.language,
-		ignoreWords: [...parseCustomWords(input.settings.customWords), ...(input.configIgnoreWords ?? [])],
+function createSettings(input: CSpellRunInput): CSpellUserSettings {
+	return {
+		language: input.settings.language,
 		words: input.configWords ?? [],
-		fileUri: input.filename,
+		ignoreWords: [...parseCustomWords(input.settings.customWords), ...(input.configIgnoreWords ?? [])],
+	};
+}
+
+export async function runCSpell(content: string, input: CSpellRunInput): Promise<SpellcheckResult> {
+	const settings = createSettings(input);
+	const document: Document = {
+		uri: input.filename,
+		text: content,
+		languageId: 'markdown',
 	};
 
-	const checkText = getCheckText(cspellLib);
-	if (!checkText) {
-		throw new Error('Failed to load @cspell/cspell-lib API.');
+	const result = await spellCheckDocument(document, { generateSuggestions: false }, settings);
+	if (result.errors?.length) {
+		throw result.errors[0];
 	}
 
-	const result = await checkText(content, options);
-	const issues = normalizeIssues(result);
+	const issues = normalizeIssues(result.issues);
 	const unknownWords = [...new Set(issues.map((issue) => issue.word))];
 
 	return {
 		unknownWords,
 		issues,
-		rawOutput: JSON.stringify(result),
+		rawOutput: JSON.stringify(result.issues),
 	};
 }
