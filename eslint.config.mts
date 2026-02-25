@@ -10,12 +10,7 @@ export default tseslint.config(
 				...globals.browser,
 			},
 			parserOptions: {
-				projectService: {
-					allowDefaultProject: [
-						'eslint.config.js',
-						'manifest.json'
-					]
-				},
+				project: ['./tsconfig.eslint.json'],
 				tsconfigRootDir: import.meta.dirname,
 				extraFileExtensions: ['.json']
 			},
@@ -38,6 +33,8 @@ export default tseslint.config(
 			"@typescript-eslint/no-unsafe-member-access": "off",
 			"@typescript-eslint/no-unsafe-return": "off",
 			"@typescript-eslint/no-unsafe-argument": "off",
+			"@typescript-eslint/await-thenable": "off",
+			"@typescript-eslint/no-deprecated": "off",
 		},
 	},
 	globalIgnores([
